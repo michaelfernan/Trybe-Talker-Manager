@@ -117,7 +117,6 @@ function validateTalk(talk) {
   return null;
 }
 
-
 app.post('/talker', async (request, response) => {
   const { authorization: token } = request.headers;
   if (!token) {
@@ -143,6 +142,42 @@ app.post('/talker', async (request, response) => {
   await writeTalkerFile(talkers);
 
   response.status(HTTP_CREATED_STATUS).json(newTalker);
+});
+
+app.put('/talker/:id', async (request, response) => {
+  const { id } = request.params;
+  const { name, age, talk } = request.body;
+  const { authorization: token } = request.headers;
+
+
+  if (!token) {
+    return response.status(HTTP_UNAUTHORIZED_STATUS).json({ message: 'Token não encontrado' });
+  }
+  if (!isTokenValid(token)) {
+    return response.status(HTTP_UNAUTHORIZED_STATUS).json({ message: 'Token inválido' });
+  }
+
+  const nameError = validateName(name);
+  const ageError = validateAge(age);
+  const talkError = validateTalk(talk);
+
+  if (nameError || ageError || talkError) {
+    const message = nameError || ageError || talkError;
+    return response.status(HTTP_BAD_REQUEST_STATUS).json({ message });
+  }
+
+  const talkers = await readTalkerFile();
+  const talkerIndex = talkers.findIndex((t) => t.id === parseInt(id, 10));
+  
+  if (talkerIndex === -1) {
+    return response.status(HTTP_NOT_FOUND_STATUS).json({ message: 'Pessoa palestrante não encontrada' });
+  }
+
+  talkers[talkerIndex] = { ...talkers[talkerIndex], name, age, talk };
+  await writeTalkerFile(talkers);
+
+
+  response.status(HTTP_OK_STATUS).json(talkers[talkerIndex]);
 });
 
 // Não remova esse endpoint, é para o avaliador funcionar
