@@ -179,6 +179,32 @@ app.put('/talker/:id', async (request, response) => {
 
   response.status(HTTP_OK_STATUS).json(talkers[talkerIndex]);
 });
+app.delete('/talker/:id', async (request, response) => {
+  const { id } = request.params;
+  const { authorization: token } = request.headers;
+
+
+  if (!token) {
+    return response.status(HTTP_UNAUTHORIZED_STATUS).json({ message: 'Token não encontrado' });
+  }
+  if (!isTokenValid(token)) {
+    return response.status(HTTP_UNAUTHORIZED_STATUS).json({ message: 'Token inválido' });
+  }
+
+  const talkers = await readTalkerFile();
+  const talkerIndex = talkers.findIndex((t) => t.id === parseInt(id, 10));
+  
+  if (talkerIndex === -1) {
+    return response.status(HTTP_NOT_FOUND_STATUS).json({ message: 'Pessoa palestrante não encontrada' });
+  }
+
+  talkers.splice(talkerIndex, 1);
+  await writeTalkerFile(talkers);
+
+ 
+  response.status(204).send();
+});
+
 
 // Não remova esse endpoint, é para o avaliador funcionar
 app.get('/', (_request, response) => {
