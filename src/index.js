@@ -1,11 +1,12 @@
 const express = require('express');
 const fs = require('fs').promises;
-const crypto = require('crypto'); // Importando o módulo crypto
+const crypto = require('crypto'); 
 
 const app = express();
 app.use(express.json());
 
 const HTTP_OK_STATUS = 200;
+const HTTP_BAD_REQUEST_STATUS = 400;
 const PORT = process.env.PORT || '3001';
 
 async function readTalkerFile() {
@@ -17,18 +18,10 @@ async function readTalkerFile() {
     return [];
   }
 }
+
 app.get('/talker', async (_request, response) => {
   const talkers = await readTalkerFile();
   response.status(HTTP_OK_STATUS).json(talkers);
-});
-
-function generateToken() {
-  return crypto.randomBytes(8).toString('hex');
-}
-
-app.post('/login', (_request, response) => {
-  const token = generateToken();
-  response.status(HTTP_OK_STATUS).json({ token });
 });
 
 app.get('/talker/:id', async (request, response) => {
@@ -42,6 +35,44 @@ app.get('/talker/:id', async (request, response) => {
   }
 
   response.status(HTTP_OK_STATUS).json(talker);
+});
+
+function validateEmail(email) {
+  const emailRegex = /^\S+@\S+\.\S+$/;
+  if (!email) {
+    return 'O campo "email" é obrigatório';
+  }
+  if (!emailRegex.test(email)) {
+    return 'O "email" deve ter o formato "email@email.com"';
+  }
+  return null;
+}
+
+function validatePassword(password) {
+  if (!password) {
+    return 'O campo "password" é obrigatório';
+  }
+  if (password.length < 6) {
+    return 'O "password" deve ter pelo menos 6 caracteres';
+  }
+  return null;
+}
+
+app.post('/login', (request, response) => {
+  const { email, password } = request.body;
+  
+  const emailError = validateEmail(email);
+  if (emailError) {
+    return response.status(HTTP_BAD_REQUEST_STATUS).json({ message: emailError });
+  }
+
+  const passwordError = validatePassword(password);
+  if (passwordError) {
+    return response.status(HTTP_BAD_REQUEST_STATUS).json({ message: passwordError });
+  }
+
+  const token = crypto.randomBytes(8).toString('hex');
+  response.status(HTTP_OK_STATUS).json({ token });
 });
 
 // Não remova esse endpoint, é para o avaliador funcionar
