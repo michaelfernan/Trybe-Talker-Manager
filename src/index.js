@@ -1,5 +1,6 @@
 const express = require('express');
 const fs = require('fs').promises;
+const crypto = require('crypto'); // Importando o módulo crypto
 
 const app = express();
 app.use(express.json());
@@ -20,6 +21,16 @@ app.get('/talker', async (_request, response) => {
   const talkers = await readTalkerFile();
   response.status(HTTP_OK_STATUS).json(talkers);
 });
+
+function generateToken() {
+  return crypto.randomBytes(8).toString('hex');
+}
+
+app.post('/login', (_request, response) => {
+  const token = generateToken();
+  response.status(HTTP_OK_STATUS).json({ token });
+});
+
 app.get('/talker/:id', async (request, response) => {
   const { id } = request.params;
   const talkers = await readTalkerFile();
