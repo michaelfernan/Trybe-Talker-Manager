@@ -34,7 +34,29 @@ app.get('/talker', async (_request, response) => {
   const talkers = await readTalkerFile();
   response.status(HTTP_OK_STATUS).json(talkers);
 });
+app.get('/talker/search', async (request, response) => {
+  const { q: searchTerm } = request.query;
+  const { authorization: token } = request.headers;
 
+
+  if (!token) {
+    return response.status(HTTP_UNAUTHORIZED_STATUS).json({ message: 'Token não encontrado' });
+  }
+  if (!isTokenValid(token)) {
+    return response.status(HTTP_UNAUTHORIZED_STATUS).json({ message: 'Token inválido' });
+  }
+
+  const talkers = await readTalkerFile();
+
+  if (!searchTerm) {
+    return response.status(HTTP_OK_STATUS).json(talkers);
+  }
+
+  
+  const filteredTalkers = talkers.filter(talker => talker.name.includes(searchTerm));
+
+  response.status(HTTP_OK_STATUS).json(filteredTalkers);
+});
 app.get('/talker/:id', async (request, response) => {
   const { id } = request.params;
   const talkers = await readTalkerFile();
@@ -204,6 +226,7 @@ app.delete('/talker/:id', async (request, response) => {
  
   response.status(204).send();
 });
+
 
 
 // Não remova esse endpoint, é para o avaliador funcionar
