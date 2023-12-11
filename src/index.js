@@ -54,7 +54,7 @@ app.get('/talker', async (_request, response) => {
   response.status(HTTP_OK_STATUS).json(talkers);
 });
 async function handleTalkerSearch(request, response) {
-  const { q: searchTerm, rate: rateQuery } = request.query;
+  const { q: searchTerm, rate: rateQuery, date: dateQuery } = request.query;
   const { authorization: token } = request.headers;
 
   if (!token) {
@@ -64,7 +64,10 @@ async function handleTalkerSearch(request, response) {
     return response.status(HTTP_UNAUTHORIZED_STATUS).json({ message: 'Token inválido' });
   }
 
-  // Verifica se o rateQuery é um número inteiro
+  if (dateQuery && !isDateValid(dateQuery)) {
+    return response.status(HTTP_BAD_REQUEST_STATUS).json({ message: 'O parâmetro "date" deve ter o formato "dd/mm/aaaa"' });
+  }
+
   if (rateQuery && (!/^\d+$/.test(rateQuery) || !isRateValid(parseInt(rateQuery, 10)))) {
     return response.status(HTTP_BAD_REQUEST_STATUS).json({ message: 'O campo "rate" deve ser um número inteiro entre 1 e 5' });
   }
@@ -81,9 +84,14 @@ async function handleTalkerSearch(request, response) {
     filteredTalkers = filteredTalkers.filter((talker) => talker.talk.rate === rate);
   }
 
+  if (dateQuery) {
+    filteredTalkers = filteredTalkers.filter((talker) => talker.talk.watchedAt === dateQuery);
+  }
+
   response.status(HTTP_OK_STATUS).json(filteredTalkers);
 }
 
+app.get('/talker/search', handleTalkerSearch);
 
 app.get('/talker/search', handleTalkerSearch);
 
@@ -99,6 +107,37 @@ app.get('/talker/:id', async (request, response) => {
   }
 
   response.status(HTTP_OK_STATUS).json(talker);
+});
+app.patch('/talker/rate/:id', async (request, response) => {
+  const { id } = request.params;
+  const { rate } = request.body;
+  const { authorization: token } = request.headers;
+
+  if (!token) {
+    return response.status(HTTP_UNAUTHORIZED_STATUS).json({ message: 'Token não encontrado' });
+  }
+  if (!isTokenValid(token)) {
+    return response.status(HTTP_UNAUTHORIZED_STATUS).json({ message: 'Token inválido' });
+  }
+
+  if (rate === undefined || rate === null) {
+    return response.status(HTTP_BAD_REQUEST_STATUS).json({ message: 'O campo "rate" é obrigatório' });
+  }
+  if (!isRateValid(rate)) {
+    return response.status(HTTP_BAD_REQUEST_STATUS).json({ message: 'O campo "rate" deve ser um número inteiro entre 1 e 5' });
+  }
+
+  const talkers = await readTalkerFile();
+  const talkerIndex = talkers.findIndex((t) => t.id === parseInt(id, 10));
+
+  if (talkerIndex === -1) {
+    return response.status(HTTP_NOT_FOUND_STATUS).json({ message: 'Pessoa palestrante não encontrada' });
+  }
+
+  talkers[talkerIndex].talk.rate = rate;
+  await writeTalkerFile(talkers);
+
+  response.status(204).send();
 });
 
 function validateEmail(email) {
