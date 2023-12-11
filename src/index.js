@@ -54,7 +54,7 @@ app.get('/talker', async (_request, response) => {
   response.status(HTTP_OK_STATUS).json(talkers);
 });
 async function handleTalkerSearch(request, response) {
-  const { q: searchTerm } = request.query;
+  const { q: searchTerm, rate: rateQuery } = request.query;
   const { authorization: token } = request.headers;
 
   if (!token) {
@@ -64,15 +64,26 @@ async function handleTalkerSearch(request, response) {
     return response.status(HTTP_UNAUTHORIZED_STATUS).json({ message: 'Token inválido' });
   }
 
-  const talkers = await readTalkerFile();
-
-  if (!searchTerm) {
-    return response.status(HTTP_OK_STATUS).json(talkers);
+  // Verifica se o rateQuery é um número inteiro
+  if (rateQuery && (!/^\d+$/.test(rateQuery) || !isRateValid(parseInt(rateQuery, 10)))) {
+    return response.status(HTTP_BAD_REQUEST_STATUS).json({ message: 'O campo "rate" deve ser um número inteiro entre 1 e 5' });
   }
 
-  const filteredTalkers = talkers.filter((talker) => talker.name.includes(searchTerm));
+  const talkers = await readTalkerFile();
+  let filteredTalkers = talkers;
+
+  if (searchTerm) {
+    filteredTalkers = filteredTalkers.filter((talker) => talker.name.includes(searchTerm));
+  }
+
+  if (rateQuery) {
+    const rate = parseInt(rateQuery, 10);
+    filteredTalkers = filteredTalkers.filter((talker) => talker.talk.rate === rate);
+  }
+
   response.status(HTTP_OK_STATUS).json(filteredTalkers);
 }
+
 
 app.get('/talker/search', handleTalkerSearch);
 
